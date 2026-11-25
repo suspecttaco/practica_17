@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -81,17 +80,10 @@ fun TasksContent(
                 ),
                 actions = {
                     IconButton(onClick = onErrorSimulate) {
-                        Icon(
-                            imageVector = Icons.Default.Warning,
-                            contentDescription = "Simular error de carga"
-                        )
+                        Icon(Icons.Default.Warning, contentDescription = "Simular error de carga")
                     }
-
                     IconButton(onClick = onReload) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Recargar tareas"
-                        )
+                        Icon(Icons.Default.Refresh, contentDescription = "Recargar tareas")
                     }
                 }
             )
@@ -103,106 +95,161 @@ fun TasksContent(
                 .padding(paddingValues)
                 .padding(16.dp)
         ) {
-            when (val status = uiState.loadStatus) {
-                is LoadStatus.Loading -> {
-                    Column(
-                        modifier = Modifier.align(Alignment.Center),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        CircularProgressIndicator()
-                        Text("Cargando tareas...", style = MaterialTheme.typography.bodyLarge)
-                    }
-                }
-                is LoadStatus.Error -> {
-                    Column(
-                        modifier = Modifier.align(Alignment.Center),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Warning,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(48.dp)
-                        )
-                        Text(
-                            text = status.message,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                        Button(onClick = onReload) {
-                            Text("Reintentar")
-                        }
-                    }
-                }
-                is LoadStatus.Success -> {
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            OutlinedTextField(
-                                value = uiState.newTaskText,
-                                onValueChange = onTextChange,
-                                label = { Text("Nueva tarea") },
-                                singleLine = true,
-                                modifier = Modifier.weight(1f)
-                            )
-                            FilledIconButton(onClick = onTaskAdd) {
-                                Icon(
-                                    imageVector = Icons.Default.Add,
-                                    contentDescription = "Agregar tarea"
-                                )
-                            }
-                        }
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            TaskFilter.entries.forEach { filter ->
-                                FilterChip(
-                                    selected = uiState.activeFilter == filter,
-                                    onClick = { onFilterChange(filter) },
-                                    label = { Text(filter.tag) }
-                                )
-                            }
-                        }
-                        if (uiState.filteredTasks.isEmpty()) {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "No hay tareas en esta categoria.",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        } else {
-                            LazyColumn(
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                items(
-                                    items = uiState.filteredTasks,
-                                    key = { it.id }
-                                ) { task ->
-                                    TaskItem(
-                                        task = task,
-                                        onAlternate = { onCompleteChange(task.id) },
-                                        onDelete = { onTaskDelete(task.id) }
-                                    )
-                                }
-                            }
-                        }
-                    }
+            LoadStatusContent(
+                status = uiState.loadStatus,
+                onReload = onReload,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                TasksList(
+                    uiState = uiState,
+                    onTextChange = onTextChange,
+                    onTaskAdd = onTaskAdd,
+                    onCompleteChange = onCompleteChange,
+                    onTaskDelete = onTaskDelete,
+                    onFilterChange = onFilterChange
+                )
+            }
+        }
+    }
+}
+
+/** Resuelve qué mostrar según el estado de carga; [content] se muestra solo en éxito. */
+@Composable
+private fun LoadStatusContent(
+    status: LoadStatus,
+    onReload: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    when (status) {
+        LoadStatus.Success -> content()
+        LoadStatus.Loading -> CenteredMessage(modifier) {
+            CircularProgressIndicator()
+            Text("Cargando tareas...", style = MaterialTheme.typography.bodyLarge)
+        }
+        is LoadStatus.Error -> CenteredMessage(modifier) {
+            Icon(
+                imageVector = Icons.Default.Warning,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(48.dp)
+            )
+            Text(
+                text = status.message,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Button(onClick = onReload) { Text("Reintentar") }
+        }
+    }
+}
+
+@Composable
+private fun CenteredMessage(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            content()
+        }
+    }
+}
+
+@Composable
+private fun TasksList(
+    uiState: TasksUiState,
+    onTextChange: (String) -> Unit,
+    onTaskAdd: () -> Unit,
+    onCompleteChange: (Int) -> Unit,
+    onTaskDelete: (Int) -> Unit,
+    onFilterChange: (TaskFilter) -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        NewTaskInput(
+            text = uiState.newTaskText,
+            onTextChange = onTextChange,
+            onTaskAdd = onTaskAdd
+        )
+        FilterRow(
+            activeFilter = uiState.activeFilter,
+            onFilterChange = onFilterChange
+        )
+
+        val tasks = uiState.filteredTasks
+        if (tasks.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "No hay tareas en esta categoria.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        } else {
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(items = tasks, key = { it.id }) { task ->
+                    TaskItem(
+                        task = task,
+                        onAlternate = { onCompleteChange(task.id) },
+                        onDelete = { onTaskDelete(task.id) }
+                    )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun NewTaskInput(
+    text: String,
+    onTextChange: (String) -> Unit,
+    onTaskAdd: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        OutlinedTextField(
+            value = text,
+            onValueChange = onTextChange,
+            label = { Text("Nueva tarea") },
+            singleLine = true,
+            modifier = Modifier.weight(1f)
+        )
+        FilledIconButton(onClick = onTaskAdd) {
+            Icon(Icons.Default.Add, contentDescription = "Agregar tarea")
+        }
+    }
+}
+
+@Composable
+private fun FilterRow(
+    activeFilter: TaskFilter,
+    onFilterChange: (TaskFilter) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        TaskFilter.entries.forEach { filter ->
+            FilterChip(
+                selected = activeFilter == filter,
+                onClick = { onFilterChange(filter) },
+                label = { Text(filter.tag) }
+            )
         }
     }
 }
@@ -234,11 +281,7 @@ fun TaskItem(
                 modifier = Modifier
                     .weight(1f)
                     .padding(horizontal = 8.dp),
-                textDecoration = if (task.completed) {
-                    TextDecoration.LineThrough
-                } else {
-                    TextDecoration.None
-                },
+                textDecoration = if (task.completed) TextDecoration.LineThrough else TextDecoration.None,
                 style = MaterialTheme.typography.bodyLarge
             )
             IconButton(onClick = onDelete) {
@@ -251,5 +294,3 @@ fun TaskItem(
         }
     }
 }
-
-
