@@ -11,6 +11,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import com.simposio.practica17.data.Task
+import com.simposio.practica17.presentation.TasksScreen
 import com.simposio.practica17.ui.theme.Practica17Theme
 
 class MainActivity : ComponentActivity() {
@@ -19,7 +21,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             Practica17Theme {
-
+                TasksScreen()
             }
         }
     }
