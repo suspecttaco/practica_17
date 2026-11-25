@@ -27,13 +27,13 @@ class TasksViewModel(
             _uiState.update { it.copy(loadStatus = LoadStatus.Loading) }
 
             try {
-                val obtainedList = repository.getInitialTasks(simulateError)
-                nextId = (obtainedList.maxOfOrNull { it.id } ?: 0) + 1
+                val fetchedTasks = repository.getInitialTasks(simulateError)
+                nextId = (fetchedTasks.maxOfOrNull { it.id } ?: 0) + 1
 
                 _uiState.update {
                     it.copy(
                         loadStatus = LoadStatus.Success,
-                        tasks = obtainedList
+                        tasks = fetchedTasks
                     )
                 }
             } catch (e: Exception) {
@@ -48,27 +48,27 @@ class TasksViewModel(
         }
     }
 
-    fun onTextChanged(newText: String) {
+    fun onTextChange(newText: String) {
         _uiState.update { it.copy(newTaskText = newText) }
     }
 
     fun addTask() {
-        val cleanTitle = _uiState.value.newTaskText.trim()
-        if (cleanTitle.isEmpty()) return
+        val trimmedTitle = _uiState.value.newTaskText.trim()
+        if (trimmedTitle.isEmpty()) return
 
-        val newTask = Task(id = nextId++, title = cleanTitle)
+        val newTask = Task(id = nextId++, title = trimmedTitle)
 
-        _uiState.update { actualStatus ->
-            actualStatus.copy(
-                tasks = listOf(newTask) + actualStatus.tasks,
+        _uiState.update { currentState ->
+            currentState.copy(
+                tasks = listOf(newTask) + currentState.tasks,
                 newTaskText = ""
             )
         }
     }
 
-    fun alternateComplete(taskId: Int) {
-        _uiState.update { actualStatus ->
-            val updatedList = actualStatus.tasks.map { task ->
+    fun toggleCompleted(taskId: Int) {
+        _uiState.update { currentState ->
+            val updatedList = currentState.tasks.map { task ->
                 if (task.id == taskId) {
                     task.copy(completed = !task.completed)
                 } else {
@@ -76,14 +76,22 @@ class TasksViewModel(
                 }
             }
 
-            actualStatus.copy(tasks = updatedList)
+            currentState.copy(tasks = updatedList)
         }
     }
 
     fun deleteTask(taskId: Int) {
-        _uiState.update { actualStatus ->
-            actualStatus.copy(
-                tasks = actualStatus.tasks.filterNot { it.id == taskId }
+        _uiState.update { currentState ->
+            currentState.copy(
+                tasks = currentState.tasks.filterNot { it.id == taskId }
+            )
+        }
+    }
+
+    fun clearCompleted() {
+        _uiState.update { currentState ->
+            currentState.copy(
+                tasks = currentState.tasks.filterNot { it.completed }
             )
         }
     }

@@ -2,10 +2,10 @@ package com.simposio.practica17.presentation
 
 import com.simposio.practica17.data.Task
 
-enum class TaskFilter(val tag: String) {
-    ALL("All"),
-    PENDING("Pending"),
-    COMPLETED("Completed")
+enum class TaskFilter(val label: String) {
+    ALL("Todas"),
+    PENDING("Pendientes"),
+    COMPLETED("Completadas")
 }
 
 sealed interface LoadStatus {
@@ -20,6 +20,15 @@ data class TasksUiState(
     val activeFilter: TaskFilter = TaskFilter.ALL,
     val newTaskText: String = ""
 ) {
+    val totalCount: Int
+        get() = tasks.size
+
+    val pendingCount: Int
+        get() = tasks.count { !it.completed }
+
+    val completedCount: Int
+        get() = tasks.count { it.completed }
+
     val filteredTasks: List<Task>
         get() = when (activeFilter) {
             TaskFilter.ALL -> tasks
